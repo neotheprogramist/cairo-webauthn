@@ -3,8 +3,10 @@ mod transaction_waiter;
 pub mod webauthn_signer;
 
 pub mod felt_ser;
+mod session_token;
+
 #[cfg(test)]
-mod tests;
+pub mod tests;
 
 use wasm_bindgen::prelude::*;
 
