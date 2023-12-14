@@ -3,6 +3,7 @@ use alexandria_data_structures::array_ext::ArrayTraitExt;
 use core::box::BoxTrait;
 use core::array::SpanTrait;
 use starknet::info::{TxInfo, get_tx_info, get_block_timestamp};
+use starknet::account::Call;
 use result::ResultTrait;
 use option::OptionTrait;
 use array::ArrayTrait;
@@ -24,17 +25,17 @@ mod tests;
 
 #[starknet::interface]
 trait ISession<TContractState> {
-    fn validate_session(self: @TContractState, signature: TxInfoSignature, calls: Array<Call>);
-    // fn register_session(ref self: TContractState, token: felt252);
-    fn revoke_session(ref self: TContractState, token: felt252, expires: u64);
+    fn validate_session(self: @TContractState, signature:  Span<felt252>, calls: Span<Call>);
+    fn revoke_session(ref self: TContractState, token: felt252);
 }
 
 // Based on https://github.com/argentlabs/starknet-plugin-account/blob/3c14770c3f7734ef208536d91bbd76af56dc2043/contracts/plugins/SessionKey.cairo
 #[starknet::component]
 mod session_component {
     use core::result::ResultTrait;
-    use super::{Call, check_policy};
+    use super::check_policy;
     use starknet::info::{TxInfo, get_tx_info, get_block_timestamp};
+    use starknet::account::Call;
     use webauthn_session::signature::{TxInfoSignature, FeltSpanTryIntoSignature, SignatureProofs, SignatureProofsTrait};
     use webauthn_session::hash::{compute_session_hash, compute_call_hash};
     use ecdsa::check_ecdsa_signature;
@@ -67,19 +68,16 @@ mod session_component {
     impl SessionImpl<
         TContractState, +HasComponent<TContractState>
     > of super::ISession<ComponentState<TContractState>> {
-        fn validate_session(self: @ComponentState<TContractState>, signature: TxInfoSignature, calls: Array<Call>) {
-            self.validate_signature(signature, calls).unwrap();
+        fn validate_session(self: @ComponentState<TContractState>, mut signature: Span<felt252>, calls: Span<Call>) {
+            let sig: TxInfoSignature = Serde::<TxInfoSignature>::deserialize(ref signature).unwrap();
+
+            // self.validate_signature(sig, calls).unwrap();
         }
 
         fn revoke_session(
-            ref self: ComponentState<TContractState>, token: felt252, expires: u64,
+            ref self: ComponentState<TContractState>, token: felt252,
         ) {
-            let now = get_block_timestamp();
-            if expires <= now {
-                return;
-            };
-            // Expires can't be zero
-            self.revoked.write(token, expires);
+            self.revoked.write(token, 1);
             self.emit(TokenRevoked { token: token });
         }
     }
@@ -88,7 +86,7 @@ mod session_component {
     impl InternalImpl<
         TContractState, +HasComponent<TContractState>
     > of InternalTrait<TContractState> {
-        fn validate_signature(self: @ComponentState<TContractState>, signature: TxInfoSignature, calls: Array<Call>) -> Result<(), felt252> {
+        fn validate_signature(self: @ComponentState<TContractState>, signature: TxInfoSignature, calls: Span<Call>) -> Result<(), felt252> {
             if signature.proofs.len() != calls.len() {
                 return Result::Err(Errors::LENGHT_MISMATCH);
             };
@@ -127,13 +125,13 @@ mod session_component {
 }
 
 
-#[derive(Drop, Copy, Serde)]
-struct Call {
-    to: felt252,
-    selector: felt252,
-    data_offset: felt252,
-    data_len: felt252,
-}
+// #[derive(Drop, Copy, Serde)]
+// struct Call {
+//     to: felt252,
+//     selector: felt252,
+//     data_offset: felt252,
+//     data_len: felt252,
+// }
 
 
 fn check_policy(
@@ -144,7 +142,7 @@ fn check_policy(
         if i >= call_array.len() {
             break Result::Ok(());
         }
-        let leaf = compute_call_hash(*call_array.at(i));
+        let leaf = compute_call_hash(call_array.at(i));
         let mut merkle: MerkleTree<Hasher> = MerkleTreeTrait::new();
         if merkle.verify(root, leaf, proofs.at(i)) == false {
             break Result::Err(());
