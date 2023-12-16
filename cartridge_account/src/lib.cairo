@@ -34,6 +34,7 @@ mod Account {
     use starknet::get_tx_info;
     use starknet::secp256r1::{Secp256r1Point, Secp256r1Impl};
     use webauthn_auth::webauthn::verify;
+    use webauthn_auth::component::webauthn_component;
 
     const TRANSACTION_VERSION: felt252 = 1;
     // 2**128 + TRANSACTION_VERSION
@@ -47,11 +48,17 @@ mod Account {
     impl SRC5CamelImpl = src5_component::SRC5CamelImpl<ContractState>;
     impl SRC5InternalImpl = src5_component::InternalImpl<ContractState>;
 
+    component!(path: webauthn_component, storage: webauthn, event: WebauthnEvent);
+    #[abi(embed_v0)]
+    impl WebauthnImpl = webauthn_component::Webauthn<ContractState>;
+
     #[storage]
     struct Storage {
         Account_public_key: felt252,
         #[substorage(v0)]
-        src5: src5_component::Storage
+        src5: src5_component::Storage,
+        #[substorage(v0)]
+        webauthn: webauthn_component::Storage,
     }
 
     #[event]
@@ -59,7 +66,8 @@ mod Account {
     enum Event {
         OwnerAdded: OwnerAdded,
         OwnerRemoved: OwnerRemoved,
-        SRC5Event: src5_component::Event
+        SRC5Event: src5_component::Event,
+        WebauthnEvent: webauthn_component::Event,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -96,7 +104,6 @@ mod Account {
             let sender = get_caller_address();
             assert(sender.is_zero(), Errors::INVALID_CALLER);
 
-            // Check tx version
             let tx_info = get_tx_info().unbox();
             let version = tx_info.version;
             if version != TRANSACTION_VERSION {
@@ -158,47 +165,6 @@ mod Account {
 
         fn setPublicKey(ref self: ContractState, newPublicKey: felt252) {
             PublicKeyImpl::set_public_key(ref self, newPublicKey);
-        }
-    }
-
-    #[generate_trait]
-    #[external(v0)]
-    impl WebauthnSignerCamelImpl of IWebauthnSignerCamel {
-        fn verifyWebauthnSigner(
-            self: @ContractState, 
-            pub_x: u256,
-            pub_y: u256, // public key as point on elliptic curve
-            r: u256, // 'r' part from ecdsa
-            s: u256, // 's' part from ecdsa
-            type_offset: usize, // offset to 'type' field in json
-            challenge_offset: usize, // offset to 'challenge' field in json
-            origin_offset: usize, // offset to 'origin' field in json
-            client_data_json: Array<u8>, // json with client_data as 1-byte array 
-            challenge: Array<u8>, // challenge as 1-byte array
-            origin: Array<u8>, //  array origin as 1-byte array
-            authenticator_data: Array<u8>
-        ) -> bool {
-            let pub_key = match 
-                Secp256r1Impl::secp256_ec_new_syscall(pub_x, pub_y){
-                    Result::Ok(pub_key) => pub_key,
-                    Result::Err(e) => { return false; }
-                };
-            let pub_key = match pub_key {
-                Option::Some(pub_key) => pub_key,
-                Option::None(_) => { return false; }
-            };
-            verify(
-                pub_key, 
-                r, 
-                s, 
-                type_offset, 
-                challenge_offset, 
-                origin_offset, 
-                client_data_json, 
-                challenge, 
-                origin, 
-                authenticator_data
-            ).is_ok()
         }
     }
 
