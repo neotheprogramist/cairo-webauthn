@@ -6,6 +6,7 @@ pub mod account {
         "./abi/account.abi.json",
         type_aliases {
             openzeppelin::introspection::src5::SRC5::Event as SRC5Event;
+            webauthn_auth::component::webauthn_component::Event as WebauthnEvent;
         }
     );
 }
