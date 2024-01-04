@@ -2,7 +2,7 @@ use starknet::account::Call;
 
 #[starknet::interface]
 trait IWebauthn<TContractState> {
-    fn verifyWebauthnSigner(
+    fn verify_webauthn_signer(
         self: @TContractState, 
         pub_x: u256,
         pub_y: u256, // public key as point on elliptic curve
@@ -48,7 +48,7 @@ mod webauthn_component {
     impl WebauthnImpl<
         TContractState, +HasComponent<TContractState>
     > of super::IWebauthn<ComponentState<TContractState>> {
-        fn verifyWebauthnSigner(
+        fn verify_webauthn_signer(
             self: @ComponentState<TContractState>, 
             pub_x: u256,
             pub_y: u256, // public key as point on elliptic curve
