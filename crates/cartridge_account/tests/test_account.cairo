@@ -96,16 +96,20 @@ impl TransferCallImpl of TransferCallTrait {
     }
 }
 
+fn deploy_contract(name: felt252, constructor_calldata: @Array::<felt252>) -> ContractAddress {
+    let contract = declare(name);
+    contract.deploy(constructor_calldata).unwrap()
+}
+
 #[test]
 fn test_account() {
     let data = SIGNED_TX_DATA();
 
-    let account_address = declare('Account').deploy(@array![data.public_key]).unwrap();
+    let account_address = deploy_contract('Account', @array![data.public_key]);
 
     // Account associated with the account_address will have 1000 tokens assigned.
     let constructor_args = ERC20ConstructorArgumentsImpl::new(account_address, 1000);
-
-    let erc20_address = declare('ERC20').deploy(@constructor_args.to_calldata()).unwrap();
+    let erc20_address = deploy_contract('ERC20', @constructor_args.to_calldata());
     let account = AccountABIDispatcher { contract_address: account_address };
     let erc20 = IERC20Dispatcher { contract_address: erc20_address };
 
