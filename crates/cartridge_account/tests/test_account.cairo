@@ -1,8 +1,8 @@
 use cartridge_account::Account;
-use cartridge_account::Account::{TRANSACTION_VERSION, QUERY_VERSION};
+use cartridge_account::Account::AccountComponent::{TRANSACTION_VERSION, QUERY_VERSION};
 
-use cartridge_account::interface::AccountABIDispatcher;
-use cartridge_account::interface::AccountABIDispatcherTrait;
+use openzeppelin::account::interface::AccountABIDispatcher;
+use openzeppelin::account::interface::AccountABIDispatcherTrait;
 use openzeppelin::token::erc20::interface::IERC20Dispatcher;
 use openzeppelin::token::erc20::interface::IERC20DispatcherTrait;
 
@@ -10,7 +10,7 @@ use openzeppelin::utils::serde::SerializedAppend;
 use openzeppelin::utils::selectors;
 
 use snforge_std::{
-    declare, ContractClassTrait, TxInfoMock, TxInfoMockTrait, start_spoof, start_prank
+    declare, start_spoof, start_prank, ContractClassTrait, CheatTarget, TxInfoMock, TxInfoMockTrait
 };
 
 use starknet::ContractAddress;
@@ -112,10 +112,10 @@ fn test_account() {
     // Mock the transaction version
     let mut tx_info = TxInfoMockTrait::default();
     tx_info.version = Option::Some(TRANSACTION_VERSION);
-    start_spoof(account_address, tx_info);
+    start_spoof(CheatTarget::One(account_address), tx_info);
 
     let caller_address = contract_address_const::<0>();
-    start_prank(account_address, caller_address);
+    start_prank(CheatTarget::One(account_address), caller_address);
 
     assert(erc20.balance_of(account_address) == 1000, 'Initial balance should be equal');
 
