@@ -1,5 +1,5 @@
-use cartridge_account::Account;
-use cartridge_account::Account::AccountComponent::{TRANSACTION_VERSION, QUERY_VERSION};
+use cartridge_account::account::Account;
+use cartridge_account::account::Account::AccountComponent::{TRANSACTION_VERSION, QUERY_VERSION};
 
 use openzeppelin::account::interface::AccountABIDispatcher;
 use openzeppelin::account::interface::AccountABIDispatcherTrait;
