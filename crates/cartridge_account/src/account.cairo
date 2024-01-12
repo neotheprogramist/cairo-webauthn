@@ -28,13 +28,9 @@ mod Account {
     impl WebauthnImpl = webauthn_component::Webauthn<ContractState>;
 
     #[abi(embed_v0)]
-    impl SRC6Impl = AccountComponent::SRC6Impl<ContractState>;
-    #[abi(embed_v0)]
     impl PublicKeyImpl = AccountComponent::PublicKeyImpl<ContractState>;
     #[abi(embed_v0)]
     impl SRC5Impl = SRC5Component::SRC5Impl<ContractState>;
-    impl AccountInternalImpl = AccountComponent::InternalImpl<ContractState>;
-
 
     #[storage]
     struct Storage {
@@ -68,7 +64,7 @@ mod Account {
 
     #[constructor]
     fn constructor(ref self: ContractState, public_key: felt252) {
-        self.account.initializer(public_key);
+        self.initializer(public_key);
     }
 
     #[generate_trait]
