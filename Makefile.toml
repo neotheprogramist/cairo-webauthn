@@ -1,0 +1,42 @@
+[env]
+config = "--account katana-0 --rpc http://0.0.0.0:5050"
+build = "./target/dev/cartridge_account_"
+sierra = ".contract_class.json"
+artifacts = "./target/abi/"
+test_pubkey = "0x1234"
+katana_0 = "0x517ececd29116499f4a1b64b094da79ba08dfd54a3edaa316134c41f8160973"
+
+[tasks.default]
+dependencies = ["generate-artifacts"]
+
+[tasks.generate-artifacts]
+description = "Generate ABI artifacts."
+script = [
+    'scarb --manifest-path ./crates/cartridge_account/Scarb.toml build',
+    'mkdir -p ${artifacts}',
+    'jq .abi ${build}Account${sierra} > ${artifacts}account.abi.json',
+    'jq .abi ${build}ERC20${sierra} > ${artifacts}erc20.abi.json',
+]
+
+[tasks.deploy-katana]
+description = "Deploy Katana contracts."
+script = [
+    'erc20_class=$(starkli class-hash ${build}ERC20${sierra})',
+    'account_class=$(starkli class-hash ${build}Account${sierra})',
+    'starkli declare ${build}Account${sierra} ${config}',
+    'starkli deploy "${account_class}" ${test_pubkey} --salt 0x1234 ${config}',
+    'starkli declare ${build}ERC20${sierra} ${config}',
+    'starkli deploy "${erc20_class}" str:token str:tkn u256:1 ${katana_0} --salt 0x1234 ${config}',
+]
+
+[tasks.test-session]
+description = "Run test session."
+dependencies = ["generate-artifacts"]
+script = [
+    'rm -rf ./account_sdk/log',
+    'cargo test --manifest-path account_sdk/Cargo.toml session -- --nocapture',
+]
+
+[tasks.clean]
+description = "Clean up artifacts."
+script = ['rm -rf ./target']
