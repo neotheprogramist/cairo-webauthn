@@ -5,11 +5,13 @@ use p256::{
     elliptic_curve::rand_core::OsRng,
 };
 
-use crate::{Function, FunctionReturnLength, FunctionTrait as _};
+use super::*;
 
-use super::{ArgsBuilder, FeltSerialize, P256r1PublicKey};
-
-const VERIFY_SIGNATURE: FunctionReturnLength<2> = Function::new("verify_signature");
+const VERIFY_SIGNATURE: Function<SimpleVecParser, ConstLenExtractor<2>> = Function::new(
+    "verify_signature",
+    SimpleVecParser::new(),
+    ConstLenExtractor::new(),
+);
 
 fn verify_signature(
     hash: &[u8],
